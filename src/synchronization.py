@@ -8,8 +8,8 @@ def frequency_synchronization(tr1, tr2, T_s):
       tr2: second group of received downsampled training samples.
       T_s: symbol period in seconds.
     - Output:
-      Delta: CFO, f_tx - f_rx in radians.
-      range: range of detection granted by N_moose in radians
+      Delta: CFO, f_tx - f_rx in Hz.
+      range: range of detection granted by N_moose in Hz.
   """
   N_tr = len(tr1)
   correlation = np.correlate(tr1, tr2)
@@ -28,9 +28,9 @@ def coarse_symbol_sync(sps, signal):
     - Output:
       tau_d: fractional time delay.
   """
-  tau_d_candidates = np.arange(start=-sps/2, step=1, stop=sps/2+1)
-  output_energy = [np.sum(signal[::i]**2) for i in tau_d_candidates]
-  tau_d = tau_d_candidates[np.argmax(output_energy)]
+  tau_d_candidates = np.arange(start=0, step=1, stop=int(sps)+1)
+  output_energy = [np.sum(np.vdot((signal[i::sps]), (signal[i::sps]))) for i in tau_d_candidates]
+  tau_d = tau_d_candidates[np.argmax(np.array(output_energy))]
   return tau_d
 
 def gen_zadoff_chu_sequence(q, N_zc):
@@ -47,13 +47,13 @@ def gen_zadoff_chu_sequence(q, N_zc):
     zc_sequence[n] = np.exp(-1j*np.pi*q*n*(n+1)/N_zc)
   return zc_sequence
 
-def frame_sync(zc_sequence, signal):
+def frame_sync(zc_sequence, signal, sps):
   """ performs correlation with downsampled ZC sequence and finds d, the integer time offset.
     d = frame_sync(zc_sequence, signal)
     - Input:
       zc_sequence: training Zadoff-Chu sequence.
       signal: a segment of received signal containing only 1 copy of the transmitted signal.
   """
-  correlation = np.correlate(signal, zc_sequence)
-  d = np.argmax(correlation)
+  correlation = np.correlate(signal[::sps], zc_sequence)
+  d = np.argmax(np.abs(correlation))
   return d

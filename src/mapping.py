@@ -77,7 +77,7 @@ def get_rrc_pulse(beta, span, sps):
       span: The integer number of symbol durations spanned by the pulse, not including the symbol at 𝑡=0
       sps: Samples per symbol.
     - Output:
-      pulse: A root raised cosine pulse (normalized such that its peak value is unity), symmetric and centered at 𝑡=0
+      pulse: A root raised cosine pulse, symmetric and centered at 𝑡=0
       . The number of zero crossings should be equal to span.
   """
   T = 1
