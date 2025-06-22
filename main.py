@@ -13,13 +13,14 @@ def main(tx_gain_dB=-25, M=64):
   ts = 1 / fs  # baseband sampling period (seconds per sample)
   sps = 10     # samples per data symbol
   T = ts * sps # time between data symbols (seconds per symbol)
+  CFO = 80
 
   # ---------------------------------------------------------------
   # Pluto system parameters.
   # ---------------------------------------------------------------
   sample_rate = fs                # sampling rate, between ~600e3 and 61e6
   tx_carrier_freq_Hz = 915e6      # transmit carrier frequency, between 325 MHz to 3.8 GHz
-  rx_carrier_freq_Hz = 915e6-100      # receive carrier frequency, between 325 MHz to 3.8 GHz
+  rx_carrier_freq_Hz = 915e6+CFO      # receive carrier frequency, between 325 MHz to 3.8 GHz
   tx_rf_bw_Hz = sample_rate * 1   # transmitter's RF bandwidth, between 200 kHz and 56 MHz
   rx_rf_bw_Hz = sample_rate * 1   # receiver's RF bandwidth, between 200 kHz and 56 MHz
   tx_gain_dB = tx_gain_dB         # transmit gain (in dB), beteween -89.75 to 0 dB with a resolution of 0.25 dB
@@ -31,7 +32,7 @@ def main(tx_gain_dB=-25, M=64):
   # ---------------------------------------------------------------
   # Initialize Pluto object using issued token.
   # ---------------------------------------------------------------
-  sdr = adi.Pluto(token='P3Us4WCklW8') # create Pluto object
+  sdr = adi.Pluto(token='yhUpi2hcH0k') # create Pluto object
   sdr.sample_rate = int(sample_rate)   # set baseband sampling rate of Pluto
 
   # ---------------------------------------------------------------
@@ -56,8 +57,8 @@ def main(tx_gain_dB=-25, M=64):
   # ---------------------------------------------------------------
   # Create transmit signal.
   # ---------------------------------------------------------------
-  N_syms = 1000     # generate N random M-QAM symbols
-  N_zc = 29
+  N_syms = 500     # generate N random M-QAM symbols
+  N_zc = 389
   N_pilots = 40     
   M = M             # modulation order
   beta = 0.5        # roll-off factor
@@ -96,7 +97,10 @@ def main(tx_gain_dB=-25, M=64):
   fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(10, 6))
   fig.suptitle("rrc pulse shaped transmitted signal".format(beta))
   axs[0].plot(t, tx_signal.real)
-  markerline, stemlines, baseline = axs[0].stem(np.arange(start=0, step=sps, stop=len(t)) ,tx_signal.real[::sps], markerfmt='ro', linefmt='r')
+  markerline, stemlines, baseline = axs[0].stem(np.arange(start=0, step=sps, stop=(int(span/2)+N_zc)*sps) ,tx_signal.real[::sps][:(int(span/2)+N_zc)], markerfmt='ro', linefmt='r', label='First ZC')
+  markerline.set_markerfacecolor('none')
+  baseline.set_visible(False)
+  markerline, stemlines, baseline = axs[0].stem(np.arange(start=(int(span/2)+N_zc)*sps, step=sps, stop=(int(span/2)+2*N_zc)*sps) ,tx_signal.real[::sps][(int(span/2)+N_zc):(int(span/2)+2*N_zc)], markerfmt='bo', linefmt='b', label='Moose Method ZC')
   markerline.set_markerfacecolor('none')
   baseline.set_visible(False)
   axs[0].axhline(0, color='black', linewidth=0.5)
@@ -106,9 +110,13 @@ def main(tx_gain_dB=-25, M=64):
   axs[0].grid(True)
   axs[0].set_xlim([0, 0+1000])
   axs[0].set_ylim([-1.5, 1.5])
+  axs[0].legend()
 
   axs[1].plot(t, tx_signal.imag)
-  markerline, stemlines, baseline = axs[1].stem(np.arange(start=0, step=sps, stop=len(t)) ,tx_signal.imag[::sps], markerfmt='ro', linefmt='r')
+  markerline, stemlines, baseline = axs[1].stem(np.arange(start=0, step=sps, stop=(int(span/2)+N_zc)*sps) ,tx_signal.imag[::sps][:(int(span/2)+N_zc)], markerfmt='ro', linefmt='r', label='First ZC')
+  markerline.set_markerfacecolor('none')
+  baseline.set_visible(False)
+  markerline, stemlines, baseline = axs[1].stem(np.arange(start=(int(span/2)+N_zc)*sps, step=sps, stop=(int(span/2)+2*N_zc)*sps) ,tx_signal.imag[::sps][(int(span/2)+N_zc):(int(span/2)+2*N_zc)], markerfmt='bo', linefmt='b', label='Moose Method ZC')
   markerline.set_markerfacecolor('none')
   baseline.set_visible(False)
   axs[1].axhline(0, color='black', linewidth=0.5)
@@ -118,6 +126,7 @@ def main(tx_gain_dB=-25, M=64):
   axs[1].grid(True)
   axs[1].set_xlim([0, 0+1000])
   axs[1].set_ylim([-1.5, 1.5])
+  axs[1].legend()
   fig.supxlabel("Symbol Index")
   plt.savefig("figs/rrc_pulse_shaped_transmitted_signal.pdf")
   plt.show()
@@ -155,9 +164,8 @@ def main(tx_gain_dB=-25, M=64):
 
   # Extract 1 chunk of ZC + Pilots + data
   chunk_indices = np.arange(start=begin_index, stop=begin_index+(2*N_zc+N_pilots+N_syms)*sps, step=sps)
-  chunk = rx_signal_filtered[chunk_indices]
-  upsampled_chunk = rx_signal_filtered[np.arange(start=begin_index, stop=begin_index+(2*N_zc+N_pilots+N_syms)*sps, step=1)]
-  
+  upsampled_chunk = rx_signal_filtered[np.arange(start=begin_index, stop=begin_index+(int(span/2)+2*N_zc+N_pilots+N_syms)*sps, step=1)]
+  print("upsampled_chunk shape: ", upsampled_chunk.shape)
 
   t = np.arange(0, len(rx_signal_filtered))
   fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(10, 6))
@@ -184,7 +192,7 @@ def main(tx_gain_dB=-25, M=64):
 
 
   axs[1].plot(t, rx_signal_filtered.imag)
-  markerline, stemlines, baseline = axs[1].stem(chunk_indices ,rx_signal_filtered.imag[chunk_indices], markerfmt='go', linefmt='g')
+  markerline, stemlines, baseline = axs[1].stem(chunk_indices ,rx_signal_filtered.imag[chunk_indices], markerfmt='ro', linefmt='r')
   markerline.set_markerfacecolor('none')
   baseline.set_visible(False)
 
@@ -210,7 +218,7 @@ def main(tx_gain_dB=-25, M=64):
   tau_d = sync.coarse_symbol_sync(sps, upsampled_chunk)
   print("tau_d = ", tau_d)
   chunk_indices_symbol_synchronized = np.arange(start=0, stop=(2*N_zc+N_pilots+N_syms)*sps, step=sps) + tau_d
-  symbol_synched_chunk = upsampled_chunk[0:(2*N_zc+N_pilots+N_syms)*sps:1] + tau_d
+  symbol_synched_chunk = upsampled_chunk[tau_d:tau_d+(int(span/2)+2*N_zc+N_pilots+N_syms)*sps:1]
   print("symbol_synched_chunk shape: ", symbol_synched_chunk.shape)
 
   t = np.arange(0, len(upsampled_chunk))
@@ -256,19 +264,19 @@ def main(tx_gain_dB=-25, M=64):
   axs[1].set_xlim([0, 0+1000])
   plt.savefig("Symbol Synchronization.pdf")
   plt.show()
-  np.save("symbol_synched_chunk.npy", symbol_synched_chunk)
+  # np.save("symbol_synched_chunk.npy", symbol_synched_chunk)
 
   # fine frame synchronization
   d = sync.frame_sync(moose_zc_sequence, symbol_synched_chunk[:3*N_zc*sps], sps)
   print("fine frame synchronization, d = ", d)
   fine_frame_synched_chunk = symbol_synched_chunk[d*sps:(d+2*N_zc+N_pilots+N_syms)*sps:1]
+  print("fine_frame_synched shape: ", fine_frame_synched_chunk.shape)
 
   # frequency synchronization
   tr1 = symbol_synched_chunk[d*sps:(d+N_zc)*sps:sps]
   tr2 = symbol_synched_chunk[(d+N_zc)*sps:(d+2*N_zc)*sps:sps]
   Delta, detection_range = sync.frequency_synchronization(tr1, tr2, T)
-  print("Delta = ", Delta)
-  print("Delta detection range: ", detection_range)
+  print("Delta = ", Delta, "; Delta detection range: ", detection_range)
   t = np.arange(start=0, step=1, stop=len(fine_frame_synched_chunk)) * ts
   frequency_sync_correction_factor = np.exp(1j*2*np.pi*Delta*t)
   frequency_synched_chunk = fine_frame_synched_chunk * frequency_sync_correction_factor
@@ -318,66 +326,75 @@ def main(tx_gain_dB=-25, M=64):
   plt.show()
 
   # LS estimation
-  # y = np.array(rx_signal_filtered[pilot_indices]).reshape((N_pilots,))
+  y = np.array(frequency_synched_chunk[2*N_zc*sps:(2*N_zc+N_pilots)*sps:sps]).reshape((N_pilots,))
+  print("y= ", y)
   # t = pilot_sequence.reshape((N_pilots,))
-  # print(y.shape)
-  # print(t.shape)
   # h_est = np.vdot(t, y) / np.vdot(t, t)
-  # print(h_est)
-  # y_avg = np.mean(np.array(rx_signal_filtered[pilot_indices]))
-  # np.save("pilot_sequences_values.npy", rx_signal_filtered[pilot_indices])
-  # np.save("chunk.npy", chunk)
-  # h_est = y_avg / (1+1j)
-  # print(h_est)
+  y_avg = np.mean(y)
+  h_est = y_avg / (1+1j)
+  print("h = ",h_est)
 
   # equalization
-  # chunk_equalized = chunk / h_est
+  equalized_chunk = frequency_synched_chunk / h_est
 
-  # t = np.arange(0, len(chunk_equalized))
-  # fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(10, 6))
-  # fig.suptitle("Equalized chunk".format(beta))
-  # axs[0].plot(t, chunk_equalized.real)
-  # markerline, stemlines, baseline = axs[0].stem(np.arange(start=0, step=1, stop=len(t)) ,chunk_equalized.real, markerfmt='ro', linefmt='r')
-  # markerline.set_markerfacecolor('none')
-  # baseline.set_visible(False)
-  # axs[0].axhline(0, color='black', linewidth=0.5)
-  # axs[0].axvline(0, color='black', linewidth=0.5)
-  # axs[0].set_title("Pulse train: real")
-  # axs[0].set_ylabel("Real")
-  # axs[0].grid(True)
-  # axs[0].set_xlim([0, 0+100])
-  # axs[0].set_ylim([-1.5, 1.5])
+  t = np.arange(0, len(equalized_chunk))
+  fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(10, 6))
+  fig.suptitle("Equalized chunk")
+  axs[0].plot(t, equalized_chunk.real)
+  markerline, stemlines, baseline = axs[0].stem(np.arange(start=0, step=sps, stop=len(t)), equalized_chunk.real[::sps], markerfmt='ro', linefmt='r')
+  markerline.set_markerfacecolor('none')
+  baseline.set_visible(False)
+  axs[0].axhline(0, color='black', linewidth=0.5)
+  axs[0].axvline(0, color='black', linewidth=0.5)
+  axs[0].set_title("Pulse train: real")
+  axs[0].set_ylabel("Real")
+  axs[0].grid(True)
+  axs[0].set_xlim([2000, 2000+1000])
+  axs[0].set_ylim([-1.5, 1.5])
 
-  # axs[1].plot(t, chunk_equalized.imag)
-  # markerline, stemlines, baseline = axs[1].stem(np.arange(start=0, step=1, stop=len(t)) ,chunk_equalized.imag, markerfmt='ro', linefmt='r')
-  # markerline.set_markerfacecolor('none')
-  # baseline.set_visible(False)
-  # axs[1].axhline(0, color='black', linewidth=0.5)
-  # axs[1].axvline(0, color='black', linewidth=0.5)
-  # axs[1].set_title("Pulse train: imag")
-  # axs[1].set_ylabel("Imaginary")
-  # axs[1].grid(True)
-  # axs[1].set_xlim([0, 0+100])
-  # axs[1].set_ylim([-1.5, 1.5])
-  # plt.savefig("Equalized_chunk.pdf".format(beta))
-  # plt.show()
+  axs[1].plot(t, equalized_chunk.imag)
+  markerline, stemlines, baseline = axs[1].stem(np.arange(start=0, step=sps, stop=len(t)), equalized_chunk.imag[::sps], markerfmt='bo', linefmt='b')
+  markerline.set_markerfacecolor('none')
+  baseline.set_visible(False)
+  axs[1].axhline(0, color='black', linewidth=0.5)
+  axs[1].axvline(0, color='black', linewidth=0.5)
+  axs[1].set_title("Pulse train: imag")
+  axs[1].set_ylabel("Imaginary")
+  axs[1].grid(True)
+  axs[1].set_xlim([2000, 2000+1000])
+  axs[1].set_ylim([-1.5, 1.5])
+  plt.savefig("Equalized_chunk.pdf")
+  plt.show()
 
   # extract data from the chunk
-  # equalized_data_chunk = chunk_equalized[N_zc+N_pilots:]
-  # data_chunk = zc_symbols_terminated[N_zc+N_pilots:]
+  equalized_data_chunk = equalized_chunk[(2*N_zc+N_pilots)*sps:(2*N_zc+N_pilots+N_syms)*sps:sps]
+  data_chunk = zc_symbols_terminated[2*N_zc+N_pilots:2*N_zc+N_pilots+N_syms:1]
+
+  # plotting
+  plt.scatter(equalized_data_chunk.real, equalized_data_chunk.imag, marker='o',facecolor='none', edgecolors='red', label='Received Constellation')
+  plt.scatter(data_chunk.real, data_chunk.imag, marker='o', c='green', label='64-QAM Constellation')
+  plt.axvline(0, color='black', linewidth=0.5)
+  plt.axhline(0, color='black', linewidth=0.5)
+  plt.xlim([-1.5, 1.5])
+  plt.ylim([-1.5, 1.5])
+  plt.legend()
+  plt.savefig(f"Received_constellation_{CFO}.pdf")
+  plt.show()
 
   # symbol detection
-  # num_incorrect = 0
-  # detected_symbol_index = np.zeros(shape=(len(equalized_data_chunk)), dtype=int)
-  # true_symbol_index = np.zeros(shape=(len(equalized_data_chunk)), dtype=int)
+  num_incorrect = 0
+  detected_symbol_index = np.zeros(shape=(len(equalized_data_chunk)), dtype=int)
+  true_symbol_index = np.zeros(shape=(len(equalized_data_chunk)), dtype=int)
+  print("detected symbol size: ", detected_symbol_index.shape)
+
 
   # count number of incorrect detection
-  # for i_raw_symbol in np.arange(0, len(equalized_data_chunk)):
-  #   detected_symbol_index[i_raw_symbol] = int(np.argmin((equalized_data_chunk[i_raw_symbol] - np.array(constellation))**2))
-  #   true_symbol_index[i_raw_symbol] = int(np.argmin((data_chunk[i_raw_symbol] - np.array(constellation))**2))
-  #   num_incorrect += np.sum(~np.isclose(np.array(constellation)[detected_symbol_index[i_raw_symbol]], np.array(constellation)[true_symbol_index[i_raw_symbol]], atol=1e-3))
-    
-  # print("error rate: ", num_incorrect/N_syms)
+  for i_raw_symbol in np.arange(0, len(equalized_data_chunk)):
+    detected_symbol_index[i_raw_symbol] = int(np.argmin((equalized_data_chunk[i_raw_symbol] - np.array(constellation))**2))
+    true_symbol_index[i_raw_symbol] = int(np.argmin((data_chunk[i_raw_symbol] - np.array(constellation))**2))
+    num_incorrect += (detected_symbol_index[i_raw_symbol] != true_symbol_index[i_raw_symbol])
+  print("num incorrect: ", num_incorrect)
+  print("error rate: ", num_incorrect/N_syms)
 
   # return num_incorrect, N_syms
 
