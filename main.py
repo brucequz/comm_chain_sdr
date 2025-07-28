@@ -28,10 +28,7 @@ def main(tx_gain_dB=-25, M=64):
     q         = 2       # ZC sequence root value
   ))
   T = ts * config.sps # time between data symbols (seconds per symbol)  
-  CFO = 80     # CFO
-
-  # pilots
-  
+  CFO = 80     # CFO  
   pulse_shape = mapping.get_rrc_pulse(beta=config.beta, span=config.span, sps=config.sps)
 
   # # ---------------------------------------------------------------
@@ -117,21 +114,30 @@ def main(tx_gain_dB=-25, M=64):
   # for i in range(1): # clear buffer to be safe
   #     rx_data_ = sdr.rx() # toss them out
   # rx_signal = sdr.rx() # capture raw samples from Pluto
+  rx_signal = tx_signal
 
-  # ## rx matched filtering
-  # rx_signal_filtered = np.convolve(rx_signal, pulse_shape, mode='same') / sps
+  # ---------------------------------------------------------------
+  # Rx Matched Filtering
+  # ---------------------------------------------------------------
+  rx_signal_filtered = np.convolve(rx_signal, pulse_shape, mode='same') / config.sps
 
-  # # ---------------------------------------------------------------
-  # # Time Synchronization
-  # # ---------------------------------------------------------------
-  # ## symbol synchronization
-  # tau_d = sync.coarse_symbol_sync(sps, rx_signal_filtered)
-  # print("tau_d = ", tau_d)
-  # symbol_synched_chunk = rx_signal_filtered[tau_d::sps]
+  # ---------------------------------------------------------------
+  # Time Synchronization
+  # ---------------------------------------------------------------
+  ## symbol synchronization
+  tau_d = sync.coarse_symbol_sync(config.sps, rx_signal_filtered)
+  print("tau_d = ", tau_d)
+  symbol_synched_chunk = rx_signal_filtered[tau_d::config.sps]
 
-  # ## frame synchronization using just Long Training Field
-  # # Under CFO, you can't immediately do the correlation based frame sync,
-  # # but if two ZCs are back to back, then we can exploit this for frame synch.
+  # ---------------------------------------------------------------
+  # Long Training Field Frame Synchronization
+  # ---------------------------------------------------------------
+  # Under CFO, you can't immediately do the correlation based frame sync,
+  # but if two ZCs are back to back, then we can exploit this for frame synch.
+  d_hat, corr_val_list = sync.long_training_field_frame_sync(config, symbol_synched_chunk)
+  print("d_hat = ", d_hat)
+  plt.stem(corr_val_list)
+  plt.show()
   # ltf_correlation = np.correlate(symbol_synched_chunk, ltf)
   # ltf_begin_index = np.argmax(abs(ltf_correlation[len(stf):len(ltf_correlation)-]))
   # stf_begin_index = ltf_begin_index - len(stf)

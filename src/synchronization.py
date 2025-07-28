@@ -57,3 +57,31 @@ def frame_sync(zc_sequence, signal, sps):
   correlation = np.correlate(signal[::sps], zc_sequence)
   d = np.argmax(np.abs(correlation))
   return d
+
+def long_training_field_frame_sync(config, signal):
+  """ performs correlation on the signal based on the fact that there are config.reps_LTF long
+  training fields.
+    - Input:
+      config: configuration dictionary.
+      signal: downsampled signal.
+    - Output:
+      d_hat: predicted starting sample index.
+  """
+  idx_search_begin = config.reps_STF * config.N_STF
+  idx_search_end = len(signal) - (config.N_syms + config.N_pilots + config.reps_LTF * config.N_LTF)
+
+  best_correlation_val = 0
+  correlation_value_list = []
+  for d in np.arange(idx_search_begin, idx_search_end):
+    first_segment = signal[d : d+config.N_LTF]
+    first_segment_magnitude = np.sum(np.abs(first_segment)**2)
+    second_segment = signal[d+config.N_LTF : d+2*config.N_LTF]
+
+    correlation_val = np.abs(np.correlate(first_segment, second_segment, mode='valid'))**2 / (np.abs(first_segment_magnitude)**2)
+    print(correlation_val)
+    correlation_value_list.append(correlation_val)
+    if correlation_val > best_correlation_val:
+      best_correlation_val = correlation_val
+      d_hat = d
+
+  return d_hat, correlation_value_list

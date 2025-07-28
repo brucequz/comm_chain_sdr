@@ -42,6 +42,8 @@ def plot_tx_signal(config, tx_signal):
   idx_syms_end  = idx_pilot_end + config.N_syms
   idx_zeros_end = idx_syms_end + int(config.N_syms/10)
 
+  print("idx_stf_end: ", idx_stf_end)
+
   print(idx_ltf_end*config.sps)
   t = np.arange(0, len(tx_signal))
   fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(10, 6), constrained_layout=True)
