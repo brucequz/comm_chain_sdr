@@ -44,14 +44,21 @@ Transmitted signal with Root Raised-Cosine pulse shaping at the transmitter,
 ### 1 
 Match filter means $g_{rx}(t) = g_{tx}(-t)^*$. This can be proved using the definition of SNR and Cauchy-Schwarz inequality.
 
-$$\text{SNR} = \frac{E_s \cdot |p(0)|^2}{N_o \cdot \| g_{rx} \|^2},$$
+``` math 
+\text{SNR} = \frac{E_s \cdot |p(0)|^2}{N_o \cdot \| g_{rx} \|^2},
+```
 where $p(t) = g_{rx}(t) * g_{tx}(t)$ is the effective pulse shape. By definition of convolution,
 
-$$
-\begin{aligned}
-  p(0) &= \int_{-\infty}^{\infty} g_{rx}(\tau) g_{tx}(0-\tau) d\tau \nonumber \\
-  &= \int_{-\infty}^{\infty} g_{rx}(\tau) g_{tx}(-\tau) d\tau \nonumber \\
-  |p(0)|^2 &= \left| \int_{-\infty}^{\infty} g_{rx}(\tau) g_{tx}(-\tau) d\tau \right|^2 \nonumber \\
-  & \le \| g_{rx}\|^2 \cdot \| g_{tx} \|^2, && \text{(Cauchy Schwarz Inequality)}\nonumber
-\end{aligned}$$
+``` math
+
+  p(0) = \int_{-\infty}^{\infty} g_{rx}(\tau) g_{tx}(0-\tau) d\tau = \int_{-\infty}^{\infty} g_{rx}(\tau) g_{tx}(-\tau) d\tau,
+```
+
+Hence,
+``` math
+  |p(0)|^2 = \left| \int_{-\infty}^{\infty} g_{rx}(\tau) g_{tx}(-\tau) d\tau \right|^2
+   \le \| g_{rx}\|^2 \cdot \| g_{tx} \|^2
+
+```
+
 with equality satisfied when $g_{rx}(t) = c \cdot g_{tx}(-t)^* $ for any constant $c$.
