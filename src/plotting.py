@@ -41,18 +41,16 @@ def plot_tx_signal(config, tx_signal):
   idx_pilot_end = idx_ltf_end + config.N_pilots
   idx_syms_end  = idx_pilot_end + config.N_syms
   idx_zeros_end = idx_syms_end + int(config.N_syms/10)
+  print(len(tx_signal)/10)
 
-  print("idx_stf_end: ", idx_stf_end)
-
-  print(idx_ltf_end*config.sps)
   t = np.arange(0, len(tx_signal))
   fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(10, 6), constrained_layout=True)
-  fig.suptitle("rrc pulse shaped transmitted signal")
+  fig.suptitle("Root Raised Cosine pulse shaped transmitted signal", fontsize=16)
 
   # STF stem
   markerline1, stemlines1, baseline1 = axs[0].stem(
-      np.arange(start=idx_stf_begin*config.sps, step=config.sps, stop=idx_stf_end*config.sps),
-      tx_signal.real[::config.sps][idx_stf_begin:idx_stf_end],
+      np.arange(start=0, step=config.sps, stop=idx_stf_end*config.sps),
+      tx_signal.real[::config.sps][:(int(config.span/2)+config.reps_STF*config.N_STF)],
       markerfmt='.', linefmt='', label='Short Training Field'
   )
   plt.setp(markerline1, markersize=3)
@@ -104,6 +102,8 @@ def plot_tx_signal(config, tx_signal):
     axs[0].axvline(x, color='gray', linestyle='--', linewidth=1)
   for x in idx_ltf_separating_dashed:
     axs[0].axvline(x, color='gray', linestyle='--', linewidth=1)
+
+  # Region highlighting
   axs[0].axvspan(idx_stf_begin*config.sps, idx_stf_end*config.sps, facecolor=background_colors[0], alpha=1)
   axs[0].axvspan(idx_stf_end*config.sps, idx_ltf_end*config.sps, facecolor=background_colors[1], alpha=1)
   axs[0].axvspan(idx_ltf_end*config.sps, idx_pilot_end*config.sps, facecolor=background_colors[2], alpha=1)
@@ -111,6 +111,7 @@ def plot_tx_signal(config, tx_signal):
   axs[0].set_title("Tx signal pulse train: real")
   axs[0].set_ylabel("Real")
   axs[0].grid(True)
+  axs[0].set_xlim([0, 30000])
   axs[0].set_ylim([-3, 3])
 
   # STF (Imag part)
@@ -168,9 +169,10 @@ def plot_tx_signal(config, tx_signal):
   axs[1].set_title("Tx signal pulse train: imag")
   axs[1].set_ylabel("Imaginary")
   axs[1].grid(True)
+  axs[1].set_xlim([0, 30000])
   axs[1].set_ylim([-3, 3])
 
-  # Region highlighting (same as above, optional)
+  # Region highlighting
   axs[1].axvspan(idx_stf_begin*config.sps, idx_stf_end*config.sps, facecolor=background_colors[0], alpha=1)
   axs[1].axvspan(idx_stf_end*config.sps, idx_ltf_end*config.sps, facecolor=background_colors[1], alpha=1)
   axs[1].axvspan(idx_ltf_end*config.sps, idx_pilot_end*config.sps, facecolor=background_colors[2], alpha=1)
@@ -178,15 +180,15 @@ def plot_tx_signal(config, tx_signal):
 
   # Region patches (shared for both)
   region_patches = [
-      Patch(facecolor=background_colors[0], edgecolor='black', label='STF region', alpha=1),
-      Patch(facecolor=background_colors[1], edgecolor='black', label='LTF region', alpha=1),
+      Patch(facecolor=background_colors[0], edgecolor='black', label='Short Training Field (STF) region', alpha=1),
+      Patch(facecolor=background_colors[1], edgecolor='black', label='Long Training Field (LTF) region', alpha=1),
       Patch(facecolor=background_colors[2], edgecolor='black', label='Pilot region', alpha=1),
       Patch(facecolor=background_colors[3], edgecolor='black', label='Data region', alpha=1),
   ]
 
   marker_handles = [
-    Line2D([0], [0], marker='o', color='w', label='Short Training Field', markerfacecolor=markercolor_list[0], markersize=5),
-    Line2D([0], [0], marker='o', color='w', label='Long Training Field', markerfacecolor=markercolor_list[1], markersize=5),
+    Line2D([0], [0], marker='o', color='w', label='STF Symbols', markerfacecolor=markercolor_list[0], markersize=5),
+    Line2D([0], [0], marker='o', color='w', label='LTF Symbols', markerfacecolor=markercolor_list[1], markersize=5),
     Line2D([0], [0], marker='o', color='w', label='Pilot Symbols', markerfacecolor=markercolor_list[2], markersize=5),
     Line2D([0], [0], marker='o', color='w', label='Data Symbols', markerfacecolor=markercolor_list[3], markersize=5),
   ]
@@ -204,5 +206,5 @@ def plot_tx_signal(config, tx_signal):
   # fig.tight_layout(rect=[0, 0.1, 1, 1])
 
   fig.supxlabel("Symbol Index")
-  # plt.savefig("figs/rrc_pulse_shaped_transmitted_signal.png")
+  plt.savefig("figs/rrc_pulse_shaped_transmitted_signal.png")
   plt.show()

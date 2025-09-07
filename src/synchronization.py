@@ -78,10 +78,26 @@ def long_training_field_frame_sync(config, signal):
     second_segment = signal[d+config.N_LTF : d+2*config.N_LTF]
 
     correlation_val = np.abs(np.correlate(first_segment, second_segment, mode='valid'))**2 / (np.abs(first_segment_magnitude)**2)
-    print(correlation_val)
     correlation_value_list.append(correlation_val)
     if correlation_val > best_correlation_val:
       best_correlation_val = correlation_val
       d_hat = d
 
   return d_hat, correlation_value_list
+
+def STF_coarse_frequency_sync(config, one_downsampled_chunk, T):
+  first_segment_STFs = one_downsampled_chunk[0:(config.reps_STF-1)*config.N_STF]
+  second_segment_STFs = one_downsampled_chunk[config.N_STF:config.reps_STF*config.N_STF]
+
+  # first_segment_STFs = one_downsampled_chunk[config.N_STF:(config.reps_STF-2)*config.N_STF]
+  # second_segment_STFs = one_downsampled_chunk[2*config.N_STF:(config.reps_STF-1)*config.N_STF]
+
+  print("first 10 of first segment STF: ", first_segment_STFs[:config.N_STF])
+  print("first 10 of second segment STF: ", second_segment_STFs[:config.N_STF])
+  print("third 10 segment of STF: ", second_segment_STFs[config.N_STF:2*config.N_STF])
+
+
+  correlation_value = np.sum(np.conjugate(first_segment_STFs)*second_segment_STFs)
+  print("correlation value: ", correlation_value)
+
+  return (1/(2*np.pi*config.N_STF*T)) * np.angle(correlation_value)

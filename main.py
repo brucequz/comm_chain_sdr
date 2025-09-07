@@ -16,7 +16,7 @@ def main(tx_gain_dB=-25, M=64):
   ts = 1 / fs  # baseband sampling period (seconds per sample)
   config = SimpleNamespace(**dict(
     sps       = 10,
-    span      = 8,
+    span      = 20,
     N_syms    = 500,    # generate N random M-QAM symbols
     N_pilots  = 40, 
     N_STF     = 31,     # short training field (STF)
@@ -121,23 +121,38 @@ def main(tx_gain_dB=-25, M=64):
   # ---------------------------------------------------------------
   rx_signal_filtered = np.convolve(rx_signal, pulse_shape, mode='same') / config.sps
 
+  print(rx_signal_filtered[:10])
+
   # ---------------------------------------------------------------
-  # Time Synchronization
+  # Symbol Synchronization
   # ---------------------------------------------------------------
-  ## symbol synchronization
   tau_d = sync.coarse_symbol_sync(config.sps, rx_signal_filtered)
   print("tau_d = ", tau_d)
-  symbol_synched_chunk = rx_signal_filtered[tau_d::config.sps]
+  symbol_synched_downsampled_rx_signal = rx_signal_filtered[tau_d::config.sps]
 
   # ---------------------------------------------------------------
   # Long Training Field Frame Synchronization
   # ---------------------------------------------------------------
   # Under CFO, you can't immediately do the correlation based frame sync,
   # but if two ZCs are back to back, then we can exploit this for frame synch.
-  d_hat, corr_val_list = sync.long_training_field_frame_sync(config, symbol_synched_chunk)
+  d_hat, corr_val_list = sync.long_training_field_frame_sync(config, symbol_synched_downsampled_rx_signal)
   print("d_hat = ", d_hat)
-  plt.stem(corr_val_list)
-  plt.show()
+
+  idx_best_downsampled_chunk_begin  = d_hat-config.reps_STF*config.N_STF
+  idx_best_downsampled_chunk_end    = idx_best_downsampled_chunk_begin + config.reps_STF*config.N_STF + config.reps_LTF*config.N_LTF + config.N_pilots + config.N_syms + int(config.N_syms/10)
+  one_downsampled_chunk = symbol_synched_downsampled_rx_signal[idx_best_downsampled_chunk_begin : idx_best_downsampled_chunk_end]
+  print("one_downsampled_chunk length", len(one_downsampled_chunk))
+
+  # ---------------------------------------------------------------
+  # Short Training Field Coarse Frequency Synchronization
+  # ---------------------------------------------------------------
+  coarse_CFO_estimate = sync.STF_coarse_frequency_sync(config, one_downsampled_chunk, T)
+  print("coarse_CFO_estimate: ", coarse_CFO_estimate)
+
+  # ---------------------------------------------------------------
+  # Long Training Field Fine Frequency Synchronization
+  # ---------------------------------------------------------------
+
   # ltf_correlation = np.correlate(symbol_synched_chunk, ltf)
   # ltf_begin_index = np.argmax(abs(ltf_correlation[len(stf):len(ltf_correlation)-]))
   # stf_begin_index = ltf_begin_index - len(stf)
